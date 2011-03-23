@@ -97,25 +97,25 @@ timers):
 
 Row 02: pulling the register's latch low is necessary because it prevents
         your changes from being displayed immediately. You would want to
-		'load up' the register with all new bits before displaying them by
-		pulling the latch high again.
+        'load up' the register with all new bits before displaying them by
+        pulling the latch high again.
 		
 Rows 03-06: You could programm this manually, but there is a more efficient
             way in the Arduino library: shiftOut(). shiftOut() required the 
-			data and the clock pin of the register, the byte order and the
-			byte to 'shift out'. The byte order determines wether the 
-			leftmost or the rightmost bit is the first to be displayed. 
-			If your output appears upside down or mirrored, change the byte
-			order here.
+            data and the clock pin of the register, the byte order and the
+            byte to 'shift out'. The byte order determines wether the 
+            leftmost or the rightmost bit is the first to be displayed. 
+            If your output appears upside down or mirrored, change the byte
+            order here.
 			
 Row 08: In reality, you would need to display a blank line (value 0) after 
         each row before pulsing the decade clock. When rapidly switching between
-		the lines without clearing them befor stepping to the next, blurry
-		'ghost lines' will appear.
+        the lines without clearing them befor stepping to the next, blurry
+        'ghost lines' will appear.
 		
 Rows 09-11: The decade has (as the name implies) 10 steps, but we only have 8
             rows. So we need to skip the last two steps on the decade by 
-			resetting the decade to step 1 again.
+            resetting the decade to step 1 again.
 			
 That more or less it for hardware control. The rest is more or less 'just'
 software coding.
