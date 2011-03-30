@@ -8,3 +8,37 @@ small examples of how to do certain things with the Arduino, this
 repository contains larger projects, often accompanied by some form 
 of hardware design. When 'Experiments' is the toolbox, then this is
 the final product. Or sort of... whatever. Enjoy!
+
+Contents
+========
+
+1 - Breakouts
+-------------
+This is an experimental series of small breakout pcbs that provide a
+simple way of connecting components to the Arduino and that provide
+all the necessary circuitry, such as pull-up/down resistors.
+
+2 - LED-Matrix
+--------------
+This project features an DIY 8x8 LED matrix together with a controller
+board that uses a shift register and a decade counter. Sample code for
+scrolling text on the matrix is also provided.
+The code relies heavily on code orignally provided at:
+http://timewitharduino.blogspot.com/2010/03/scrolling-text-on-dual-rg-matrix-shield.html
+
+3 - StepperDriver
+-----------------
+The StepperDriver is just what it claims to be: a simple design for
+a stepper motor controller that uses a L297/L298 combination and can
+be built using a single sided pcb (ok, you have to add a lot of 
+bridge wires, but it's still easier than etching a double sided pcb).
+The project currently consists only of the TARGET 3001! schematics.
+A description for the project and sample code will follow soon.
+
+The StepperDriver is based on the RepRap Stepper Motor Driver 1.2
+found at http://reprap.org/wiki/Stepper_Motor_Driver_1.2
+
+In fact, I only removed some components (like the min/max sensors)
+and created a completely new board layout so that everything can
+be home etched.
+
