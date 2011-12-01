@@ -12,13 +12,19 @@ the final product. Or sort of... whatever. Enjoy!
 Contents
 ========
 
-1 - Breakouts
+1 - Binary Clock
+----------------
+A not yet completed attempt at constructing a binary clock using high
+power LEDs for display. It features a modular design and features a
+real time clock module.
+
+2 - Breakouts
 -------------
 This is an experimental series of small breakout pcbs that provide a
 simple way of connecting components to the Arduino and that provide
 all the necessary circuitry, such as pull-up/down resistors.
 
-2 - LED-Matrix
+3 - LED-Matrix
 --------------
 This project features an DIY 8x8 LED matrix together with a controller
 board that uses a shift register and a decade counter. Sample code for
@@ -26,7 +32,7 @@ scrolling text on the matrix is also provided.
 The code relies heavily on code orignally provided at:
 http://timewitharduino.blogspot.com/2010/03/scrolling-text-on-dual-rg-matrix-shield.html
 
-3 - StepperDriver
+4 - StepperDriver
 -----------------
 The StepperDriver is just what it claims to be: a simple design for
 a stepper motor controller that uses a L297/L298 combination and can
@@ -41,4 +47,10 @@ found at http://reprap.org/wiki/Stepper_Motor_Driver_1.2
 In fact, I only removed some components (like the min/max sensors)
 and created a completely new board layout so that everything can
 be home etched.
+
+5 - WiFiStrengthLEDBar
+----------------------
+Inspired by the "Immaterials: WiFi Light Painting" video (http://vimeo.com/20412632),
+this project features a 40 LED bar for displaying the signal strength
+of a WiFi network measured with an Arduino WiFi Shield.
 
