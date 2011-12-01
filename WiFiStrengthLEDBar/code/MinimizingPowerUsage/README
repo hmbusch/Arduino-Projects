@@ -1,0 +1,12 @@
+==============================================================================
+= WiFi Signal Strength LED Display Bar README                                =
+= Subdirectory: code/MinimizingPowerUsage                                    =
+==============================================================================
+
+This directory contains the several iterations of driver circuits for the LED
+display I came up with in order to minimize power consumption of the LED bar.
+
+I finally settled on the same technique used for my LED-Matrix diplay, meaning
+exploiting the POV effect using a shift register to set the state of an 8-LED
+segment and a decade counter with transistor switching to iterate through the
+(currently 5) segments.
