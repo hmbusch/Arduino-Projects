@@ -58,8 +58,8 @@ int vInVOutFactor = 4;
 // Arduino shows approximately the same voltage as your multimeter does.
 // Any value set here will be added to the vInVOutFactor, so to achieve
 // lower readings, you must set these to negative.
-float tuneFactorPanel = -0.095;
-float tuneFactorBattery = -0.095;
+float tuneFactorPanel = 0.045;
+float tuneFactorBattery = 0.045;
 
 // initialize the LCD with the appropriate pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
