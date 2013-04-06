@@ -1,5 +1,5 @@
 /**
- * ICMI Solar Meter v1.0
+ * ICMI Solar Meter v1.1
  * 2013, Hendrik Busch (http://www.icanmakeit.de)
  * 
  * This project is a DIY meter originally intended for my solar energy
@@ -12,14 +12,17 @@
  * be measurable and I seek to implement logging features as well.
  *
  * The circuit consists of two voltage dividers allowing the Arduino to
- * measures voltages of up to 20 Volts, connected to analog 0 and analog 1.
+ * measures voltages of up to 25 Volts, connected to analog 0 and analog 1.
  * The dividers are made up as follows: 
  *     
- *    V+ -> 150K resistor -> analog pin -> 50 K resistor -> GND
+ *    V+ -> 68K resistor -> analog pin -> 5K potentiometer (set to 3K) -> GND
  *
- * Using these values, the measured voltage is exactly (at least mathematically)
- * 0.25 times the real voltage. This means that the real voltage can be calculated
- * by multiplying the measured voltage by 4.
+ * I opted for a potentiometer to allow fine tuning without changing the software. 
+ * Also, the reference voltage for the ADC is no longer 5 Volts but 1.1 Volts. This
+ * is a little more precise because the main problem are rounding errors and overflows
+ * when calculating the real voltage. To avoid floating point math for as long as possible,
+ * voltage is calculated in millivolts and a maximum of 1100 millivolts leave a 
+ * little more room than 5000.
  *
  * The LCD uses the following connections:
  *
@@ -32,13 +35,19 @@
  * LCD R/W pin to ground
  * a potentiometer on V0 for controlling display contrast.
  *
- * WARNING: This circuit can only withstand 20 Volts *at maximum*.
- * Do not apply a voltage greater than that. Check you polarity
- * when making connections. 
- * Using a voltage outside of 0-20 Volts and/or mixing up polarity will
+ * WARNING: This circuit can only withstand 25 Volts *at maximum*.
+ * - Do not apply a voltage greater than that! 
+ * - Check you polarity when making connections!
+ * - Make sure you set the potentiometer to  about 3K resistance before connecting anything!
+ *
+ * Using a voltage outside of 0-25 Volts and/or mixing up polarity will
  * almost certainly destroy your Arduino and/or worse. I can and will 
  * take absolutely no responsiblity for things that may go wrong when you 
  * build this project.
+ *
+ * NOTE: Fine tune your potentiometer using a multimeter and a realistic battery voltage.
+ * There usually is deviation between the real voltage and the one calculated. This deviation
+ * grows the farther the current voltage is apart from the voltage the circuit was fine-tuned for.
  */
  
 #include <LiquidCrystal.h> 
@@ -49,17 +58,17 @@
 // Battery is connected to the voltage divider at analog 0
 #define SENS_BATTERY 1
 
-// The factor by which to multiply the measured voltage in order
-// to calculate the real voltage.
-int vInVOutFactor = 4;
+// the internal ADC reference voltage (1.1 Volts) in millivolts;
+#define REF_VOLTAGE 1100
 
-// These "tuning" variables allow you to modify the vInVOutFactor for
-// the panel and the battery individually. Modify those values until the
-// Arduino shows approximately the same voltage as your multimeter does.
-// Any value set here will be added to the vInVOutFactor, so to achieve
-// lower readings, you must set these to negative.
-float tuneFactorPanel = 0.045;
-float tuneFactorBattery = 0.045;
+// The factor by which to multiply the measured voltage in order
+// to calculate the real voltage. The real factor between 68K and 3K
+// is 23.81, but I try to avoid floating point math as long as possible
+// and will later divide the final result by 100.
+int vInVOutFactor = 2381;
+
+// the number of readings to take for building an average
+int numberOfReadings = 5;
 
 // initialize the LCD with the appropriate pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
@@ -69,10 +78,16 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
  */
 void setup()
 {
+  analogReference(INTERNAL);
   lcd.begin(16, 2);
   lcd.print("ICMI Solar Meter");  
   lcd.setCursor(0,1);
-  lcd.print("      v1.0");
+  lcd.print("      v1.1");
+  delay(1000);
+  lcd.clear();
+  lcd.setCursor(0,1);
+  lcd.print("-> github.com/  ");
+  lcd.print("    hmbusch");
   delay(1000);
   lcd.clear();
 }
@@ -81,30 +96,30 @@ void setup()
  * Measures and displays the voltage of the solar panel and the battery
  * by reading the values, averaging them, calculating the real voltage
  * and updating the display.
- * Measuring the three values for averaging takes 1.5 seconds. It is intended
- * for smoothing out jumpy values.
+ * The delay between two measurements is 200ms. Building the average avoids
+ * jumpy readings.
  */
 void loop()
 {
-  int rawVPanel[3];
-  int rawVBattery[3];
+  int rawVPanel[numberOfReadings];
+  int rawVBattery[numberOfReadings];
   
-  // Take 3 readings with 500ms delay and build an average
-  for (int i = 0; i < 3; i++)
+  // Take a number readings with 200ms delay and build an average
+  for (int i = 0; i < numberOfReadings; i++)
   {
     rawVPanel[i] = analogRead(SENS_PANEL);
     rawVBattery[i] = analogRead(SENS_BATTERY);
-    delay(500);
+    delay(200);
   }
  
- int rawAverageVPanel = averageValue(rawVPanel, 3); 
- int rawAverageVBattery = averageValue(rawVBattery, 3);
+ int rawAverageVPanel = averageValue(rawVPanel, numberOfReadings); 
+ int rawAverageVBattery = averageValue(rawVBattery, numberOfReadings);
 
- // Map the measured value to a range of 0-5000 millivolts and scale them up 
+ // Map the measured value to a range of 0-1100 millivolts and scale them up 
  // using the voltage divider ratio and the correction factor. The result is
- // the real voltage in millivolts (i.e. in a range from 0-20000).
- int vPanel = map(rawAverageVPanel, 0, 1023, 0, 5000) * (vInVOutFactor + tuneFactorPanel);
- int vBattery = map(rawAverageVBattery, 0, 1023, 0, 5000) * (vInVOutFactor + tuneFactorBattery);
+ // the real voltage in millivolts (i.e. in a range from 0-25000).
+ int vPanel = map(rawAverageVPanel, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
+ int vBattery = map(rawAverageVBattery, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
  
  // Print the results
  lcd.setCursor(0,0);
