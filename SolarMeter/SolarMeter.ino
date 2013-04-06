@@ -83,12 +83,13 @@ void setup()
   lcd.print("ICMI Solar Meter");  
   lcd.setCursor(0,1);
   lcd.print("      v1.1");
-  delay(1000);
+  delay(2000);
   lcd.clear();
-  lcd.setCursor(0,1);
+  lcd.setCursor(0,0);
   lcd.print("-> github.com/  ");
+  lcd.setCursor(0,1);
   lcd.print("    hmbusch");
-  delay(1000);
+  delay(2000);
   lcd.clear();
 }
 
@@ -122,6 +123,7 @@ void loop()
  int vBattery = map(rawAverageVBattery, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
  
  // Print the results
+ lcd.clear();
  lcd.setCursor(0,0);
  lcd.print("Panel: ");
  
@@ -133,6 +135,7 @@ void loop()
  lcd.print("Battery: ");
  lcd.print(vBattery/1000.0, 2);
  lcd.print(" V    ");
+ delay(1000);
 } 
   
 /**
