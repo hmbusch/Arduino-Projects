@@ -335,7 +335,6 @@ void logVoltage(int milliVolts, int rawValue)
     // outut csv data
     logfile.print('"');
     logfile.print(now.year(), DEC);    
-    logfile.print('-');
     logfile.print(now.month() < 10 ? "-0" : "-");
     logfile.print(now.month(), DEC);
     logfile.print(now.day() < 10 ? "-0" : "-");
