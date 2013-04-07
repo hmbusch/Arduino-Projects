@@ -182,7 +182,7 @@ void setup()
    Wire.begin();
    RTC.begin();
    DCF.Start();
-   Serial.begin(9600);
+   //Serial.begin(9600);
    
   // Switch the ADC reference voltage to 1.1 Volts
   analogReference(INTERNAL);
@@ -204,37 +204,6 @@ void setup()
   
   // chip select pin (pin 10 on Arduino Uno) must be an output, otherwise SD won't work
   pinMode(SD_CHIP_SELECT, OUTPUT);
-  
-  // Perform low level initialization of SD for checks and volume size
-  /*
-  if (!card.init(SPI_FULL_SPEED, SD_CHIP_SELECT))
-  {
-    lcd.print("SD card error!");
-    lcd.setCursor(0,1);
-    lcd.print("Check card!");
-    delay(5 * 60 * 1000); 
-  }
-  else
-  {
-    if (volume.init(card))
-    {
-      lcd.print("SD card OK");
-      lcd.setCursor(0,1);
-      long volumeSize = volume.blocksPerCluster() * volume.clusterCount() * 512;
-      lcd.print(volumeSize / 1048576, DEC);
-      lcd.print(" MB");
-    }
-    else
-    {
-      lcd.print("Filesystem error");
-      lcd.setCursor(0,1);
-      lcd.print("Please reformat");
-    }
-  }
-  
-  delay(2000);
-  lcd.clear();
-  */
   
   // Now perform high level initialization for hassle free file access;
   if (SD.begin(SD_CHIP_SELECT))
@@ -261,14 +230,13 @@ void setup()
       if (logfile)
       {
         lcd.print(filename);
-        logfile.println("\"time\",\"voltage\",\"raw analog value\"");
+        logfile.println("\"unix timestamp\",\"time\",\"voltage\",\"raw analog value\",\"program runtime\"");
         logfile.flush();
         break;  // leave the loop!
       }
       else
       {
         lcd.print("File error!");
-        while(true);
       }
     }
   }
@@ -325,15 +293,9 @@ void logVoltage(int milliVolts, int rawValue)
   DateTime now = RTC.now();
   if (now.unixtime() - lastLogTime > 30)
   {
-    Serial.print("Last log time: ");
-    Serial.println(lastLogTime, DEC);
-    Serial.print("Now          : ");
-    Serial.println(now.unixtime(), DEC);
-    Serial.print("Difference   : ");
-    Serial.println(now.unixtime() - lastLogTime, DEC);
-    
     // outut csv data
-    logfile.print('"');
+    logfile.print(now.unixtime(), DEC);
+    logfile.print(",\"");
     logfile.print(now.year(), DEC);    
     logfile.print(now.month() < 10 ? "-0" : "-");
     logfile.print(now.month(), DEC);
@@ -350,6 +312,8 @@ void logVoltage(int milliVolts, int rawValue)
     logfile.print(milliVolts, DEC);
     logfile.print(",");
     logfile.print(rawValue, DEC);
+    logfile.print(",");
+    logfile.print(millis(), DEC);
     logfile.println();
     
     // signal a write operation and flush the new line to the SD card
