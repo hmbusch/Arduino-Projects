@@ -67,6 +67,7 @@
 #include "RTClib.h"          // https://github.com/adafruit/RTClib
 #include <DCF77.h>           // https://github.com/thijse/Arduino-Libraries/downloads
 #include <Time.h>            // http://www.arduino.cc/playground/Code/Time
+#include <SD.h>              // https://github.com/adafruit/SD
 
 //===================================
 //   Voltage measurement settings
@@ -127,6 +128,23 @@ byte backslash[8] = {
         B00000
 };
 
+
+//===================================
+//         SD card settings
+//===================================
+
+// the pin that is used for SD card chip select (pin 10 on the Adafruit SD shield)
+#define SD_CHIP_SELECT 10
+
+// SD card handler
+Sd2Card card;
+
+// SD volume handler
+SdVolume volume;
+
+// The file handle for the log file
+File logfile;
+
 //===================================
 //        runtime variables
 //===================================
@@ -150,6 +168,11 @@ int cyclesSinceLastDCFRefresh = 0;
  */
 char animation[] = {'/','-','\\','-'};
 
+/*
+ *
+ */
+long lastLogTime;
+
 /**
  * Initializes all the required objects and 
  * displays a welcome message;
@@ -160,7 +183,7 @@ void setup()
    RTC.begin();
    DCF.Start();
    Serial.begin(9600);
-
+   
   // Switch the ADC reference voltage to 1.1 Volts
   analogReference(INTERNAL);
 
@@ -175,6 +198,81 @@ void setup()
   lcd.print("-> github.com/  ");
   lcd.setCursor(0,1);
   lcd.print("    hmbusch");
+  delay(2000);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  
+  // chip select pin (pin 10 on Arduino Uno) must be an output, otherwise SD won't work
+  pinMode(SD_CHIP_SELECT, OUTPUT);
+  
+  // Perform low level initialization of SD for checks and volume size
+  /*
+  if (!card.init(SPI_FULL_SPEED, SD_CHIP_SELECT))
+  {
+    lcd.print("SD card error!");
+    lcd.setCursor(0,1);
+    lcd.print("Check card!");
+    delay(5 * 60 * 1000); 
+  }
+  else
+  {
+    if (volume.init(card))
+    {
+      lcd.print("SD card OK");
+      lcd.setCursor(0,1);
+      long volumeSize = volume.blocksPerCluster() * volume.clusterCount() * 512;
+      lcd.print(volumeSize / 1048576, DEC);
+      lcd.print(" MB");
+    }
+    else
+    {
+      lcd.print("Filesystem error");
+      lcd.setCursor(0,1);
+      lcd.print("Please reformat");
+    }
+  }
+  
+  delay(2000);
+  lcd.clear();
+  */
+  
+  // Now perform high level initialization for hassle free file access;
+  if (SD.begin(SD_CHIP_SELECT))
+  {
+    lcd.print("SD card OK");
+  }
+  else
+  {
+    lcd.print("SD card error!");  
+    while(true);
+  }
+  
+  // create a new file with a unique name
+  char filename[] = "log_00.csv";
+  for (int i = 0; i < 100; i++) 
+  {
+    filename[4] = i/10 + '0';
+    filename[5] = i%10 + '0';
+    if (!SD.exists(filename)) 
+    {
+      // only open a new file if it doesn't exist
+      logfile = SD.open(filename, FILE_WRITE);
+      lcd.setCursor(0,1);
+      if (logfile)
+      {
+        lcd.print(filename);
+        logfile.println("\"time\",\"voltage\",\"raw analog value\"");
+        logfile.flush();
+        break;  // leave the loop!
+      }
+      else
+      {
+        lcd.print("File error!");
+        while(true);
+      }
+    }
+  }
+  
   delay(2000);
   lcd.clear();
 }
@@ -211,13 +309,61 @@ void loop()
  
  // This prints out a nice floating point formatted values with 2 digits behind
  // the separator.
- lcd.print("Battery: ");
+ lcd.print("Vbat: ");
  lcd.print(vBattery/1000.0, 2);
  lcd.print(" V    ");
  
+ // log the value (method decides whether to log or to wait)
+ logVoltage(vBattery, rawAverageVBattery);
+ 
  // wait a bit before next iteration
- delay(1500);
+ delay(1000);
 } 
+ 
+void logVoltage(int milliVolts, int rawValue)
+{
+  DateTime now = RTC.now();
+  if (now.unixtime() - lastLogTime > 30)
+  {
+    Serial.print("Last log time: ");
+    Serial.println(lastLogTime, DEC);
+    Serial.print("Now          : ");
+    Serial.println(now.unixtime(), DEC);
+    Serial.print("Difference   : ");
+    Serial.println(now.unixtime() - lastLogTime, DEC);
+    
+    // outut csv data
+    logfile.print('"');
+    logfile.print(now.year(), DEC);    
+    logfile.print('-');
+    logfile.print(now.month() < 10 ? "-0" : "-");
+    logfile.print(now.month(), DEC);
+    logfile.print(now.day() < 10 ? "-0" : "-");
+    logfile.print(now.day(), DEC);
+    logfile.print(' ');
+    if (now.hour() < 10) logfile.print('0');
+    logfile.print(now.hour(), DEC);
+    logfile.print(now.minute() < 10 ? ":0" : ":");
+    logfile.print(now.minute(), DEC);
+    logfile.print(now.second() < 10 ? ":0" : ":");
+    logfile.print(now.second(), DEC);
+    logfile.print("\",");
+    logfile.print(milliVolts, DEC);
+    logfile.print(",");
+    logfile.print(rawValue, DEC);
+    logfile.println();
+    
+    // signal a write operation and flush the new line to the SD card
+    lcd.setCursor(15,1);
+    lcd.print("!");
+    logfile.flush();
+    lcd.setCursor(15,1);
+    lcd.print(" ");
+    
+    lastLogTime = now.unixtime();
+  }
+}
+ 
   
 /** 
  * Performs all the neccessary operations to sync DCF and RTC
@@ -239,7 +385,7 @@ void handleTime()
     else
     { 
       cyclesSinceLastDCFRefresh++;
-      if (cyclesSinceLastDCFRefresh > 50)
+      if (cyclesSinceLastDCFRefresh > 3600)
       {
         needsDCFRefresh = true;
         cyclesSinceLastDCFRefresh = 0;
