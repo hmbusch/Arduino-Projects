@@ -26,12 +26,12 @@
  *
  * The LCD uses the following connections:
  *
- * LCD RS pin to digital pin 12
- * LCD Enable pin to digital pin 11
- * LCD D4 pin to digital pin 5
- * LCD D5 pin to digital pin 4
- * LCD D6 pin to digital pin 3
- * LCD D7 pin to digital pin 2
+ * LCD RS pin to digital pin 8
+ * LCD Enable pin to digital pin 7
+ * LCD D4 pin to digital pin 6
+ * LCD D5 pin to digital pin 5
+ * LCD D6 pin to digital pin 4
+ * LCD D7 pin to digital pin 3
  * LCD R/W pin to ground
  * a potentiometer on V0 for controlling display contrast.
  *
@@ -52,11 +52,8 @@
  
 #include <LiquidCrystal.h> 
 
-// Solar panel is connected to the voltage divider at analog 0
-#define SENS_PANEL 0
-
 // Battery is connected to the voltage divider at analog 0
-#define SENS_BATTERY 1
+#define SENS_BATTERY 0
 
 // the internal ADC reference voltage (1.1 Volts) in millivolts;
 #define REF_VOLTAGE 1100
@@ -71,7 +68,7 @@ int vInVOutFactor = 2381;
 int numberOfReadings = 5;
 
 // initialize the LCD with the appropriate pins
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+LiquidCrystal lcd(8, 7, 6, 5, 4, 3);
 
 /**
  * Prints a small welcome message and nothing more.
@@ -102,36 +99,28 @@ void setup()
  */
 void loop()
 {
-  int rawVPanel[numberOfReadings];
   int rawVBattery[numberOfReadings];
   
   // Take a number readings with 200ms delay and build an average
   for (int i = 0; i < numberOfReadings; i++)
   {
-    rawVPanel[i] = analogRead(SENS_PANEL);
     rawVBattery[i] = analogRead(SENS_BATTERY);
     delay(200);
   }
  
- int rawAverageVPanel = averageValue(rawVPanel, numberOfReadings); 
  int rawAverageVBattery = averageValue(rawVBattery, numberOfReadings);
 
  // Map the measured value to a range of 0-1100 millivolts and scale them up 
  // using the voltage divider ratio and the correction factor. The result is
  // the real voltage in millivolts (i.e. in a range from 0-25000).
- int vPanel = map(rawAverageVPanel, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
  int vBattery = map(rawAverageVBattery, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
  
  // Print the results
  lcd.clear();
  lcd.setCursor(0,0);
- lcd.print("Panel: ");
  
  // This prints out a nice floating point formatted values with 2 digits behind
  // the separator.
- lcd.print(vPanel/1000.0, 2);
- lcd.print(" V    ");
- lcd.setCursor(0,1);
  lcd.print("Battery: ");
  lcd.print(vBattery/1000.0, 2);
  lcd.print(" V    ");
