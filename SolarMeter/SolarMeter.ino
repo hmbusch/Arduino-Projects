@@ -1,12 +1,12 @@
 /**
- * ICMI Solar Meter v1.2
+ * ICMI Solar Meter v1.3
  * 2013, Hendrik Busch (http://www.icanmakeit.de)
  * 
  * This project is a DIY meter originally intended for my solar energy
  * installation. It is supposed to add monitoring functionality to my
  * off-the-shelve solar charger, that lacks this functionality.
  *
- * This third iteration monitors the voltage battery and logs the measured
+ * This fourth iteration monitors two battery voltages and logs the measured
  * voltages to SD card for later evaluation. In a later stage, things like 
  * power intake and output will be measurable. Measuring the panel voltage
  * has been removed from this version because my charger has some issues 
@@ -14,9 +14,9 @@
  * Until I have found a way around this, panel voltage will no longer be
  * monitored.
  *
- * The circuit consists of a voltage divider allowing the Arduino to
- * measures voltages of up to 25 Volts, connected to analog 0.
- * The divider is made up as follows: 
+ * The circuit consists of two voltage divider allowing the Arduino to
+ * measures voltages of up to 25 Volts, connected to analog 0 and 1.
+ * Each divider is made up as follows: 
  *     
  *    V+ -> 68K resistor -> analog pin -> 5K potentiometer (set to 3K) -> GND
  *
@@ -65,8 +65,8 @@
 #include <LiquidCrystal.h>   // comes with Arduino
 #include <Wire.h>            // comes with Arduino
 #include "RTClib.h"          // https://github.com/adafruit/RTClib
-#include <DCF77.h>           // https://github.com/thijse/Arduino-Libraries/downloads
-#include <Time.h>            // http://www.arduino.cc/playground/Code/Time
+//#include <DCF77.h>           // https://github.com/thijse/Arduino-Libraries/downloads
+//#include <Time.h>            // http://www.arduino.cc/playground/Code/Time
 #include <SD.h>              // https://github.com/adafruit/SD
 
 //===================================
@@ -74,11 +74,12 @@
 //===================================
 
 // Battery is connected to the voltage divider at analog 0
-#define SENS_BATTERY 0
+#define SENS_BATTERY_1 0
+
+#define SENS_BATTERY_2 1
 
 // the internal ADC reference voltage (1.1 Volts) in millivolts;
 #define REF_VOLTAGE 1100
-
 
 // The factor by which to multiply the measured voltage in order
 // to calculate the real voltage. The real factor between 68K and 3K
@@ -94,16 +95,16 @@ int numberOfReadings = 5;
 //===================================
 
 // the DFC77 data pin
-#define DCF_PIN 2	
+//#define DCF_PIN 2	
 
 // the interrupt that is associated with the data pin
-#define DCF_INTERRUPT 0
+//#define DCF_INTERRUPT 0
 
 // type declaration for the time struct
-time_t time;
+//time_t time;
 
 // Initialise the receiver with pin and interrupt settings
-DCF77 DCF = DCF77(DCF_PIN,DCF_INTERRUPT);
+//DCF77 DCF = DCF77(DCF_PIN,DCF_INTERRUPT);
 
 // Construct the RTC handler
 RTC_DS1307 RTC;
@@ -153,7 +154,7 @@ File logfile;
  * When this indicator is true, the system will try to get the 
  * current time from the DCF receiver and update the RTC.
  */
-boolean needsDCFRefresh = true;
+//boolean needsDCFRefresh = true;
 
 /*
  * The loop count since the last RTC update. It makes no sense
@@ -161,12 +162,12 @@ boolean needsDCFRefresh = true;
  * This variable also doubles as a frame indicator for the waiting
  * animation (when used with the modulo operator).
  */
-int cyclesSinceLastDCFRefresh = 0;
+//int cyclesSinceLastDCFRefresh = 0;
 
 /*
  * These are the symbols needed to display a small animation.
  */
-char animation[] = {'/','-','\\','-'};
+//char animation[] = {'/','-','\\','-'};
 
 /*
  *
@@ -181,7 +182,7 @@ void setup()
 {
    Wire.begin();
    RTC.begin();
-   DCF.Start();
+   //DCF.Start();
    //Serial.begin(9600);
    
   // Switch the ADC reference voltage to 1.1 Volts
@@ -191,7 +192,7 @@ void setup()
   lcd.begin(16, 2);
   lcd.print("ICMI Solar Meter");  
   lcd.setCursor(0,1);
-  lcd.print("      v1.2");
+  lcd.print("      v1.3");
   delay(2000);
   lcd.clear();
   lcd.setCursor(0,0);
@@ -215,7 +216,7 @@ void setup()
     lcd.print("SD card error!");  
     while(true);
   }
-  
+   
   // create a new file with a unique name
   char filename[] = "log_00.csv";
   for (int i = 0; i < 100; i++) 
@@ -230,13 +231,14 @@ void setup()
       if (logfile)
       {
         lcd.print(filename);
-        logfile.println("\"unix timestamp\",\"time\",\"voltage\",\"raw analog value\",\"program runtime\"");
+        logfile.println("\"unix timestamp\",\"time\",\"voltage battery 1\",\"raw analog value 1\",\"voltage battery 2\",\"raw analog value 2\",\"program runtime\"");
         logfile.flush();
         break;  // leave the loop!
       }
       else
       {
         lcd.print("File error!");
+        while(true);
       }
     }
   }
@@ -256,39 +258,46 @@ void loop()
 {
   handleTime();
   
-  int rawVBattery[numberOfReadings];
+  int rawVBattery1[numberOfReadings];
+  int rawVBattery2[numberOfReadings];
   
   // Take a number readings with 200ms delay and build an average
   for (int i = 0; i < numberOfReadings; i++)
   {
-    rawVBattery[i] = analogRead(SENS_BATTERY);
+    rawVBattery1[i] = analogRead(SENS_BATTERY_1);
+    rawVBattery2[i] = analogRead(SENS_BATTERY_2);
     delay(200);
   }
  
- int rawAverageVBattery = averageValue(rawVBattery, numberOfReadings);
+ int rawAverageVBattery1 = averageValue(rawVBattery1, numberOfReadings);
+ int rawAverageVBattery2 = averageValue(rawVBattery2, numberOfReadings);
 
  // Map the measured value to a range of 0-1100 millivolts and scale them up 
  // using the voltage divider ratio and the correction factor. The result is
  // the real voltage in millivolts (i.e. in a range from 0-25000).
- int vBattery = map(rawAverageVBattery, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
+ int vBattery1 = map(rawAverageVBattery1, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
+ int vBattery2 = map(rawAverageVBattery2, 0, 1023, 0, REF_VOLTAGE) * vInVOutFactor / 100;
  
  // Print the results
  lcd.setCursor(0,1);
  
  // This prints out a nice floating point formatted values with 2 digits behind
  // the separator.
- lcd.print("Vbat: ");
- lcd.print(vBattery/1000.0, 2);
- lcd.print(" V    ");
+ lcd.print(vBattery1/1000.0, 2);
+ lcd.print(" V   ");
+
+ lcd.setCursor(8, 1);
+ lcd.print(vBattery2/1000.0, 2);
+ lcd.print(" V   ");
  
  // log the value (method decides whether to log or to wait)
- logVoltage(vBattery, rawAverageVBattery);
+ logVoltage(vBattery1, vBattery2, rawAverageVBattery1, rawAverageVBattery2);
  
  // wait a bit before next iteration
  delay(1000);
 } 
  
-void logVoltage(int milliVolts, int rawValue)
+void logVoltage(int milliVolts1, int milliVolts2, int rawValue1, int rawValue2)
 {
   DateTime now = RTC.now();
   if (now.unixtime() - lastLogTime > 30)
@@ -309,10 +318,14 @@ void logVoltage(int milliVolts, int rawValue)
     logfile.print(now.second() < 10 ? ":0" : ":");
     logfile.print(now.second(), DEC);
     logfile.print("\",");
-    logfile.print(milliVolts, DEC);
+    logfile.print(milliVolts1, DEC);
     logfile.print(",");
-    logfile.print(rawValue, DEC);
+    logfile.print(rawValue1, DEC);
     logfile.print(",");
+    logfile.print(milliVolts2, DEC);
+    logfile.print(",");
+    logfile.print(rawValue2, DEC);
+    logfile.print(",");    
     logfile.print(millis(), DEC);
     logfile.println();
     
@@ -341,6 +354,7 @@ void handleTime()
   if(RTC.isrunning())
   {
     // a DCF refresh is preferrable
+    /*
     if (needsDCFRefresh)
     {
       performDCFRefresh();
@@ -354,13 +368,14 @@ void handleTime()
         cyclesSinceLastDCFRefresh = 0;
       }
     }
+    */
     displayTime();
   }
   else
   {
     lcd.setCursor(0,0);
     lcd.print("[no time]");
-    performDCFRefresh();
+    //performDCFRefresh();
   }
 }
   
@@ -390,6 +405,7 @@ int averageValue(int values[], int size)
  * the the RTC. When the DCF time is not available, this method updates
  * a small animation on the display.
  */
+ /*
 void performDCFRefresh()
 {
   // get the DCF time and apply it to the RTC when available
@@ -420,7 +436,7 @@ void performDCFRefresh()
     }
     cyclesSinceLastDCFRefresh++;
   }
-}
+}*/
 
 /**
  * Reads the time from the RTC clock and displays it on the
