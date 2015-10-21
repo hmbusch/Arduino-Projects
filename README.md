@@ -30,17 +30,13 @@ This project features an DIY 8x8 LED matrix together with a controller board tha
 The code relies heavily on code orignally provided at:
 [Wise Time With Arduino - Scrolling text on the Dual RG matrix shield](http://timewitharduino.blogspot.com/2010/03/scrolling-text-on-dual-rg-matrix-shield.html)
 
-### 4 - Binary Clock
-
-A binary clock using high power LEDs for display. It features a modular design and features a real time clock module. [**Not yet completed**]
-
-### 5 - Breakouts
+### 4 - Breakouts
 
 This is an experimental series of small breakout pcbs that provide a
 simple way of connecting components to the Arduino and that provide
 all the necessary circuitry, such as pull-up/down resistors.
 
-### 6 - WiFiStrengthLEDBar
+### Additional projects
 
-Inspired by the ["Immaterials: WiFi Light Painting"](http://vimeo.com/20412632) video, this project features a 40 LED bar for displaying the signal strength of a WiFi network measured with an Arduino WiFi Shield. [**Not yet completed**]
-
+There are several older projects or those that are still in progress. You can find these in the `dev`
+branch of this git repository.
