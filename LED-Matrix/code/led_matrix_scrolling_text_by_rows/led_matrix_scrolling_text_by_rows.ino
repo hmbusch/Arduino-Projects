@@ -2,7 +2,7 @@
  * Sample program for use with the LED-Matrix Controller.
  * https://github.com/hmbusch/Arduino-Projects/LED-Matrix
  *
- * Hendrik Busch, http://www.icanmakeit.de/, 2011
+ * Hendrik Busch, http://www.icanmakeit.de/, 2011-2017
  * Released under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 
  *
  * This program consists of more or less two different parts.
@@ -20,26 +20,36 @@
  *
  * http://timewitharduino.blogspot.com/2010/03/scrolling-text-on-dual-rg-matrix-shield.html
  *
+ * Version history:
+ * 
+ *   2011/03/24 - Initial checkin / release
+ *   2017/01/24 - Updated sketch 
+ *                  - now works with latest Arduino
+ *                  - ditched all the proprietary timer stuff in favor of Timer1 library
  */
+
+// The sketch uses TimerOne to trigger the line refreshs with a ~60 Hz
+// refresh rate. Please note that this library might not run on every
+// Arduino compatible board, e.g. the ESP8266.
+#include <TimerOne.h>
 
 // Include the sprites file that holds all the displayable characters
 #include "sprites.h"
 
 // Define the pins for the shift register
-int shiftDataPin = 11;
-int shiftClockPin = 12;
-int shiftLatchPin = 13;
+const int shiftDataPin = 11;
+const int shiftClockPin = 12;
+const int shiftLatchPin = 13;
 
 // Define the pins for the decade counter
-int decadeClockPin = 7;
-int decadeResetPin = 6;
+const int decadeClockPin = 7;
+const int decadeResetPin = 6;
 
 // This variable holds the current frame that the matrix
 // will display. The scrolling part of the program just 
 // manipulates this array while the timed drawing part uses
 // the array to draw the frame
-int screenState[8] = {
-  0};
+int screenState[8] = {0};
 
 // These four byte make up a small sprite buffer for the
 // scrolling process
@@ -51,7 +61,7 @@ byte char4 = 0;
 // This is the time delay (in milliseconds) between the scrolling
 // of two columns. The lower the value, the faster the scrolling.
 // You might as well call it the scroll speed.
-int waitTime = 150;
+const int waitTime = 150;
 
 // This is the text that will be displayed by scrolling. Declaring this
 // as character array is not optimal as it is limited in size. I might
@@ -71,33 +81,17 @@ byte soft_prescaler = 0;
 byte activeRow = 0;
 
 /*
- * Sets up the pins and configures the timer by setting the hardware prescaler
- * options.
- * 
- * The hardware prescaler configured in setup() yields a frequency of 7812 Hz
- * which is to much as we need around 60 Hz which cannot be achieved by using
- * only hardware prescaling. The trick is to use a 'software prescaler' which
- * allows us to skip 15 timer events and use only every 16th. By that we yield
- * 488 timer events per second during which we display one row at a time.
- * So it takes 488/8 timer events to redraw the whole display which is roughly
- * 60 Hz and enough for the POV effect.
- * 
- * This matter is a little complicated and accesses some functions of the ATmega
- * chip directly. German users may consult 
- * http://www.uni-koblenz.de/~physik/informatik/MCU/Timer.pdf
- * for better understanding, English users may want to consider the official
- * documentation at http://www.atmel.com/dyn/resources/prod_documents/doc2505.pdf
- * or use Google for other tutorials.
+ * Sets up the pins and configures the timer. Initially, this sketch used
+ * the ATMega hardware timers, which complicated things quite a bit. I removed
+ * these parts of the code and replaced them with the TimerOne library (refer
+ * to https://www.pjrc.com/teensy/td_libs_TimerOne.html for more information).
+ * The timer is set to trigger every 2000 microseconds which gives a nice and 
+ * steady display without flickering.
  */
 void setup(){
-  // Calculation for timer 2
-  // 16 MHz / 8 = 2 MHz (prescaler 8)
-  // 2 MHz / 256 = 7812 Hz
-  // soft_prescaler = 15 ==> 488 updates per second (every 16th out of 7812 Hz)
-  // 488 / 8 rows ==> 61 Hz for the complete display
-  TCCR2A = 0;           // normal operation for timer 2
-  TCCR2B = (1<<CS21);   // select prescaler 8
-  TIMSK2 = (1<<TOIE2);  // enable overflow interrupt
+  // Initialize the Timer1 with 2000 microsecond periods.
+  Timer1.initialize(2000);
+  Timer1.attachInterrupt(displayActiveRow);
 
   // define outputs for serial shift registers
   pinMode(shiftClockPin, OUTPUT);
@@ -112,24 +106,10 @@ void setup(){
 
   // determine the length of the message string
   msgBufferSize = strlen(msgBuffer);
-}
 
-/*
- * This is the method that will be called on a timer event. The first 15 events
- * are simply counted, the 16th event is then used to draw the next row onto the
- * display and to reset the counter. Thus, every 16th timer event leads to the
- * drawing of a row.
- */
-ISR(TIMER2_OVF_vect)
-{
-  soft_prescaler++;
-  if (soft_prescaler == 15)
-  {
-    // display the next row
-    displayActiveRow();
-    soft_prescaler = 0;
-  }
-};
+  // Start displaying lines
+  Timer1.start();
+}
 
 /*
  * Resets the internal screen state and the character buffer by filling them
@@ -372,9 +352,3 @@ void pulse(int pin)
   digitalWrite(pin, LOW);
   delayMicroseconds(20);
 }
-
-
-
-
-
-

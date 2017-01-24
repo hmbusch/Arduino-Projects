@@ -1,7 +1,7 @@
 // We require this include to make the basics known, such
 // as the type byte, as this is an additional file and is treated
 // differently by the compiler.
-#include "WProgram.h"
+#include "Arduino.h"
 
 // This huge array defined the frames for each single character in 
 // hex encoding and provided in rows. This is directly taken from
