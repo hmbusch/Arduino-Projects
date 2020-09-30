@@ -1,0 +1,68 @@
+Wireless IR Thermometer using arduino
+
+Components:
+1 .MLX90615 IR Temperature Sensor
+2 .TCRT5000 IR Sensor
+3 .Arduino Nano
+
+Code:
+float error_correction  = 3.5; //add this to actual value
+int Range_sensitivity = 200; //Decrease this value to increase range 
+#include <Wire.h> 
+#include "MLX90615.h"
+MLX90615 mlx = MLX90615();
+void setup()
+{
+Serial.begin(9600);
+delay(100);
+while (! Serial);
+pinMode(2,OUTPUT);
+mlx.begin();
+}
+int Noise;
+int Signal;
+int Noise_P_Signal;
+boolean trigger = true;
+float temperature;
+float pvs_temperature;
+void loop()
+{
+digitalWrite(2,HIGH);    // Turn on IR LED
+delayMicroseconds(500);  // Forward rise time of IR LED
+Noise_P_Signal=analogRead(A7);        // Read value from A0 => noise+signal
+digitalWrite(2,LOW);     // Turn off IR LED
+delayMicroseconds(500);  // Fall time of IR LED
+Noise=analogRead(A7);        // Read value from A0 => noise only
+Signal = Noise - Noise_P_Signal;
+//Serial.print("Noise + Signal = "); Serial.println(Noise_P_Signal);
+//Serial.print("Noise ="); Serial.println(Noise);
+//Serial.print ("--> Signal ="); Serial.println (Signal);
+//temperature = (mlx.get_object_temp()) + error_correction;
+//Serial.println(temperature,1);
+//delay(100);
+if (Signal>Range_sensitivity && Noise >500) //dec. signal to increase rage
+{ 
+  if (trigger == true)
+   Serial.println("start");
+   digitalWrite(2,LOW); //Turn off IR sensor to avoid interferance. 
+   for (int i=1; i<=3; i++)
+   {
+   temperature = (mlx.get_object_temp()) + error_correction;
+   Serial.println(temperature,1);
+   delay(150);
+   }
+  trigger = false; 
+}
+else
+{
+  delay(100);
+  trigger = true;
+  digitalWrite(13,LOW);
+  Serial.println("position_error");
+}
+}
+(It is the corrected code)
+
+Circuit Diagram :
+Refer to circuitdigest.com
+
